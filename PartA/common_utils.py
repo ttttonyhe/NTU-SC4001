@@ -76,6 +76,7 @@ class EarlyStopper:
                 return True
         return False
 
+
 # ---------------------- #
 
 # Network
@@ -108,8 +109,6 @@ class MLP(nn.Module):
         return logits
 
 
-# model = MLP(no_features=77, no_hidden=128, no_labels=1)
-# optimizer = torch.optim.Adam(model.parameters(), learning_rate)
 loss_fn = nn.BCELoss()
 
 
@@ -150,21 +149,6 @@ def test_loop(dataloader, model, loss_fn):
     return test_loss, test_correct
 
 
-# Custom dataset and dataloader
-# def preprocess(df):
-#     X_train, y_train, X_test, y_test = split_dataset(
-#         df, ["filename", "label"], test_size, seed
-#     )
-#     X_train_scaled, X_test_scaled = preprocess_dataset(X_train, X_test)
-#     return X_train_scaled, y_train, X_test_scaled, y_test
-
-
-# df = pd.read_csv("simplified.csv")
-# df["label"] = df["filename"].str.split("_").str[-2]
-# df["label"].value_counts()
-# X_train_scaled, y_train, X_test_scaled, y_test = preprocess(df)
-
-
 class CustomDataset(Dataset):
     def __init__(self, X, y):
         self.X = X
@@ -180,14 +164,55 @@ class CustomDataset(Dataset):
         return torch.tensor(data, dtype=torch.float)
 
 
-# def initialise_loaders(X_train_scaled, y_train, X_test_scaled, y_test):
-#     training_data = CustomDataset(X_train_scaled, y_train)
-#     testing_data = CustomDataset(X_test_scaled, y_test)
-#     train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
-#     test_dataloader = DataLoader(testing_data, batch_size=batch_size, shuffle=True)
-#     return train_dataloader, test_dataloader
+def initialise_loaders(X_train_scaled, y_train, X_test_scaled, y_test):
+    training_data = CustomDataset(X_train_scaled, y_train)
+    testing_data = CustomDataset(X_test_scaled, y_test)
+    train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
+    test_dataloader = DataLoader(testing_data, batch_size=batch_size, shuffle=True)
+
+    return train_dataloader, test_dataloader
 
 
-# train_dataloader, test_dataloader = initialise_loaders(
-#     X_train_scaled, y_train, X_test_scaled, y_test
-# )
+no_folds = 5
+
+
+def generate_cv_folds_for_batch_sizes(parameters, X_train, y_train):
+    """
+    returns:
+    X_train_scaled_dict(dict) where X_train_scaled_dict[batch_size] is a list of the preprocessed training matrix for the different folds.
+    X_val_scaled_dict(dict) where X_val_scaled_dict[batch_size] is a list of the processed validation matrix for the different folds.
+    y_train_dict(dict) where y_train_dict[batch_size] is a list of labels for the different folds
+    y_val_dict(dict) where y_val_dict[batch_size] is a list of labels for the different folds
+    """
+
+    kf = KFold(n_splits=no_folds, shuffle=True, random_state=seed)
+
+    X_train_scaled_dict = {}
+    y_train_dict = {}
+    X_val_scaled_dict = {}
+    y_val_dict = {}
+
+    for batch_size in parameters:
+        X_train_list = []
+        y_train_list = []
+        X_val_list = []
+        y_val_list = []
+
+        for _exp, (train_index, val_index) in enumerate(kf.split(X_train)):
+            X_train_folds, y_train_folds = X_train[train_index], y_train[train_index]
+            X_val_folds, y_val_folds = X_train[val_index], y_train[val_index]
+
+            X_train_folds_scaled, X_val_folds_scaled = preprocess_dataset(
+                X_train_folds, X_val_folds
+            )
+            X_train_list.append(X_train_folds_scaled)
+            y_train_list.append(y_train_folds)
+            X_val_list.append(X_val_folds_scaled)
+            y_val_list.append(y_val_folds)
+
+        X_train_scaled_dict[batch_size] = X_train_list
+        y_train_dict[batch_size] = y_train_list
+        X_val_scaled_dict[batch_size] = X_val_list
+        y_val_dict[batch_size] = y_val_list
+
+    return X_train_scaled_dict, X_val_scaled_dict, y_train_dict, y_val_dict
