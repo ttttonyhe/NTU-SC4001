@@ -83,7 +83,7 @@ class EarlyStopper:
 dropout_rate = 0.2
 test_size = 0.3
 seed = 69
-batch_size = 256
+batch_size = 128
 learning_rate = 0.001
 
 
