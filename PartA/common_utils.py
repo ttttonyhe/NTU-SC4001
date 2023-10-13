@@ -19,6 +19,13 @@ from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, precision_score, recall_score, confusion_matrix
 
+dropout_rate = 0.2
+test_size = 0.3
+seed = 69
+batch_size = 128
+learning_rate = 0.001
+no_folds = 5
+
 
 def split_dataset(df, columns_to_drop, test_size, random_state):
     label_encoder = preprocessing.LabelEncoder()
@@ -75,16 +82,6 @@ class EarlyStopper:
             if self.counter >= self.patience:
                 return True
         return False
-
-
-# ---------------------- #
-
-# Network
-dropout_rate = 0.2
-test_size = 0.3
-seed = 69
-batch_size = 128
-learning_rate = 0.001
 
 
 class MLP(nn.Module):
@@ -162,18 +159,6 @@ class CustomDataset(Dataset):
 
     def _transform(self, data):
         return torch.tensor(data, dtype=torch.float)
-
-
-def initialise_loaders(X_train_scaled, y_train, X_test_scaled, y_test):
-    training_data = CustomDataset(X_train_scaled, y_train)
-    testing_data = CustomDataset(X_test_scaled, y_test)
-    train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
-    test_dataloader = DataLoader(testing_data, batch_size=batch_size, shuffle=True)
-
-    return train_dataloader, test_dataloader
-
-
-no_folds = 5
 
 
 def generate_cv_folds_for_batch_sizes(parameters, X_train, y_train):
